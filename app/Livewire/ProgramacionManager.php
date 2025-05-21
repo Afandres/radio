@@ -17,7 +17,7 @@ class ProgramacionManager extends Component
     public $programacion = []; // Lista de canciones programadas (IDs)
     public $radioEncendida = false;
     public $cancionActual = null; // Para destacar la canción que suena
-    protected $pidFile = '/home/andres/musica/liquidsoap.pid';
+    protected $pidFile = '/home/ubuntu/musica/liquidsoap.pid';
     public $startTimestamp = 0;    // cuándo arrancó la canción
     public $progressPercent = 0;   // porcentaje a mostrar
     use WithFileUploads;
@@ -83,7 +83,7 @@ class ProgramacionManager extends Component
         // 1. Eliminar archivo de la carpeta
         $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
         $prefix = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
-        $filePath = '/home/andres/musica/' . "{$prefix} - {$cleanTitle}.mp3";
+        $filePath = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
 
         if (file_exists($filePath)) {
             unlink($filePath);
@@ -105,7 +105,7 @@ class ProgramacionManager extends Component
 
 private function reordenarArchivosMusica()
 {
-    $rutaMusica = '/home/andres/musica/';
+    $rutaMusica = '/home/ubuntu/musica/';
 
     foreach ($this->programacion as $index => $songData) {
         $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
@@ -126,7 +126,7 @@ private function reordenarArchivosMusica()
 
     public function saveProgramacion()
     {
-        $rutaMusica = '/home/andres/musica/';
+        $rutaMusica = '/home/ubuntu/musica/';
 
         // 1. Eliminar archivos antiguos
         array_map('unlink', glob($rutaMusica . '*'));
@@ -170,7 +170,7 @@ private function reordenarArchivosMusica()
 
     public function encenderRadio()
     {
-        $script = '/home/andres/radio.liq';
+        $script = '/home/ubuntu/radio.liq';
 
         // 1) Arrancar en background y capturar PID
         shell_exec("{$script} > /dev/null 2>&1 & echo $! > {$this->pidFile}");
@@ -247,7 +247,7 @@ private function reordenarArchivosMusica()
 
     public function obtenerCancionActual()
     {
-        $base        = '/home/andres/musica/';
+        $base        = '/home/ubuntu/musica/';
         $tfile       = $base . 'cancion_actual.txt';
         $sfile       = $base . 'cancion_start.txt';
 
@@ -319,7 +319,7 @@ private function reordenarArchivosMusica()
         // 4. Preparar nombre limpio para el archivo
         $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $song->title);
         $prefix = str_pad($index, 2, '0', STR_PAD_LEFT);
-        $destination = '/home/andres/musica/' . "{$prefix} - {$cleanTitle}.mp3";
+        $destination = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
 
         // 5. Copiar el archivo desde storage si existe
         $source = storage_path('app/public/' . str_replace('storage/', '', $song->file));
