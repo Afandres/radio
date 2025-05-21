@@ -204,9 +204,9 @@ class ProgramacionManager extends Component
             $pid = trim(file_get_contents($this->pidFile));
 
             // Matar proceso y su grupo
-            shell_exec("kill -TERM -{$pid}");
-            sleep(1); // Dar tiempo a que muera
-            shell_exec("kill -KILL -{$pid}");
+            shell_exec("sudo kill -TERM {$pid}");
+            sleep(1);
+            shell_exec("sudo kill -KILL {$pid}");
 
             // Borrar archivo PID
             @unlink($this->pidFile);
