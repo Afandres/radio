@@ -407,7 +407,6 @@ class ProgramacionManager extends Component
             'artist' => 'nullable|string|max:255',
             'playlist_id' => 'required|exists:playlists,id', // Verifica que la playlist exista
             'file' => 'required|file|mimes:mp3,wav,ogg|max:10240', // Validación del archivo de música
-            'position' => 'required|integer|min:1',
         ]);
 
         // Subir el archivo de la canción
