@@ -80,15 +80,6 @@
                 >
                     Iniciar sesión
                 </a>
-
-                @if (Route::has('register'))
-                    <a
-                        href="{{ route('register') }}"
-                        class="btn btn-outline-light btn-sm px-4 fw-semibold"
-                    >
-                        Registrarse
-                    </a>
-                @endif
             @endauth
         </nav>
     @endif
