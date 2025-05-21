@@ -76,52 +76,52 @@ class ProgramacionManager extends Component
     }
 
     public function removeSong($index)
-{
-    if (isset($this->programacion[$index])) {
-        $songData = $this->programacion[$index];
+    {
+        if (isset($this->programacion[$index])) {
+            $songData = $this->programacion[$index];
 
-        // 1. Eliminar archivo de la carpeta
-        $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
-        $prefix = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
-        $filePath = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
+            // 1. Eliminar archivo de la carpeta
+            $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
+            $prefix = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
+            $filePath = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
 
-        if (file_exists($filePath)) {
-            unlink($filePath);
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            // 2. Eliminar de la tabla 'programmings'
+            if (isset($songData['song_id'])) {
+                Programming::where('song_id', $songData['song_id'])->delete();
+            }
+
+            // 3. Eliminar del arreglo de programación (vista)
+            unset($this->programacion[$index]);
+            $this->programacion = array_values($this->programacion); // Reindexar
+
+            // 4. Renombrar archivos que quedan en la carpeta para mantener orden
+            $this->reordenarArchivosMusica();
         }
-
-        // 2. Eliminar de la tabla 'programmings'
-        if (isset($songData['song_id'])) {
-            Programming::where('song_id', $songData['song_id'])->delete();
-        }
-
-        // 3. Eliminar del arreglo de programación (vista)
-        unset($this->programacion[$index]);
-        $this->programacion = array_values($this->programacion); // Reindexar
-
-        // 4. Renombrar archivos que quedan en la carpeta para mantener orden
-        $this->reordenarArchivosMusica();
     }
-}
 
-private function reordenarArchivosMusica()
-{
-    $rutaMusica = '/home/ubuntu/musica/';
+    private function reordenarArchivosMusica()
+    {
+        $rutaMusica = '/home/ubuntu/musica/';
 
-    foreach ($this->programacion as $index => $songData) {
-        $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
-        $prefix = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
-        $newFileName = "{$prefix} - {$cleanTitle}.mp3";
-        $newPath = $rutaMusica . $newFileName;
+        foreach ($this->programacion as $index => $songData) {
+            $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $songData['title']);
+            $prefix = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
+            $newFileName = "{$prefix} - {$cleanTitle}.mp3";
+            $newPath = $rutaMusica . $newFileName;
 
-        // Buscar el archivo con cualquier número antiguo al inicio
-        $pattern = $rutaMusica . '* - ' . $cleanTitle . '.mp3';
-        foreach (glob($pattern) as $oldPath) {
-            if ($oldPath !== $newPath) {
-                rename($oldPath, $newPath);
+            // Buscar el archivo con cualquier número antiguo al inicio
+            $pattern = $rutaMusica . '* - ' . $cleanTitle . '.mp3';
+            foreach (glob($pattern) as $oldPath) {
+                if ($oldPath !== $newPath) {
+                    rename($oldPath, $newPath);
+                }
             }
         }
     }
-}
 
 
     public function saveProgramacion()
@@ -172,10 +172,13 @@ private function reordenarArchivosMusica()
     {
         $script = '/home/ubuntu/radio.liq';
 
-        // 1) Arrancar en background y capturar PID
-        shell_exec("{$script} > /dev/null 2>&1 & echo $! > {$this->pidFile}");
+        // Ejecutar Liquidsoap directamente y capturar el PID de forma segura
+        $pid = shell_exec("/home/ubuntu/.opam/4.08.0/bin/liquidsoap {$script} > /dev/null 2>&1 & echo $!");
 
-        // 2) Espera activa (máx. 5s) a que el proceso exista
+        // Guardar el PID en el archivo
+        file_put_contents($this->pidFile, trim($pid));
+
+        // Espera activa (máx. 5s) para confirmar que el proceso existe
         $attempts = 0;
         do {
             sleep(1);
@@ -191,6 +194,7 @@ private function reordenarArchivosMusica()
         );
     }
 
+
     /**
      * Mata el proceso cuyo PID estaba registrado, elimina el PID file.
      */
@@ -198,11 +202,13 @@ private function reordenarArchivosMusica()
     {
         if (file_exists($this->pidFile)) {
             $pid = trim(file_get_contents($this->pidFile));
-            // Matar el proceso y sus hijos
-            shell_exec("kill -TERM {$pid}");
-            // A veces hace falta SIGKILL
-            shell_exec("kill -KILL {$pid}");
-            // Borrar el PID file
+
+            // Matar proceso y su grupo
+            shell_exec("kill -TERM -{$pid}");
+            sleep(1); // Dar tiempo a que muera
+            shell_exec("kill -KILL -{$pid}");
+
+            // Borrar archivo PID
             @unlink($this->pidFile);
         }
 
@@ -217,6 +223,7 @@ private function reordenarArchivosMusica()
                 : 'No se pudo detener la radio.'
         );
     }
+
 
     /**
      * Comprueba si existe PID file y si ese PID sigue vivo.
@@ -292,45 +299,45 @@ private function reordenarArchivosMusica()
     }
 
     public function agregarCancion($id)
-{
-    $song = Song::find($id);
+    {
+        $song = Song::find($id);
 
-    if ($song) {
-        // 1. Determinar la nueva posición en la programación
-        $index = count($this->programacion) + 1; // +1 porque es base 1
+        if ($song) {
+            // 1. Determinar la nueva posición en la programación
+            $index = count($this->programacion) + 1; // +1 porque es base 1
 
-        // 2. Agregar la canción al array programacion (vista)
-        $this->programacion[] = [
-            'song_id' => $song->id,
-            'title' => $song->title,
-            'artist' => $song->artist,
-            'file' => $song->file,
-            'duration' => $song->duration,
-            'hora' => null,
-        ];
+            // 2. Agregar la canción al array programacion (vista)
+            $this->programacion[] = [
+                'song_id' => $song->id,
+                'title' => $song->title,
+                'artist' => $song->artist,
+                'file' => $song->file,
+                'duration' => $song->duration,
+                'hora' => null,
+            ];
 
-        // 3. Crear registro en la base de datos
-        Programming::create([
-            'song_id' => $song->id,
-            'scheduled_time' => null, // Si vas a asignar hora después
-            'position' => $index,
-        ]);
+            // 3. Crear registro en la base de datos
+            Programming::create([
+                'song_id' => $song->id,
+                'scheduled_time' => null, // Si vas a asignar hora después
+                'position' => $index,
+            ]);
 
-        // 4. Preparar nombre limpio para el archivo
-        $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $song->title);
-        $prefix = str_pad($index, 2, '0', STR_PAD_LEFT);
-        $destination = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
+            // 4. Preparar nombre limpio para el archivo
+            $cleanTitle = preg_replace('/[^a-zA-Z0-9-_ ]/', '', $song->title);
+            $prefix = str_pad($index, 2, '0', STR_PAD_LEFT);
+            $destination = '/home/ubuntu/musica/' . "{$prefix} - {$cleanTitle}.mp3";
 
-        // 5. Copiar el archivo desde storage si existe
-        $source = storage_path('app/public/' . str_replace('storage/', '', $song->file));
+            // 5. Copiar el archivo desde storage si existe
+            $source = storage_path('app/public/' . str_replace('storage/', '', $song->file));
 
-        if (file_exists($source)) {
-            if (!file_exists($destination)) {
-                copy($source, $destination);
+            if (file_exists($source)) {
+                if (!file_exists($destination)) {
+                    copy($source, $destination);
+                }
             }
         }
     }
-}
 
 
 
@@ -375,23 +382,22 @@ private function reordenarArchivosMusica()
     }
 
     public function toggleTema()
-{
-    $this->temaOscuro = !$this->temaOscuro;
-}
-
-public function getCancionesFiltradasProperty()
-{
-    // Si no hay búsqueda, no retorna nada
-    if (trim($this->busqueda) === '') {
-        return collect(); // Retorna una colección vacía
+    {
+        $this->temaOscuro = !$this->temaOscuro;
     }
 
-    // Si hay búsqueda, retorna coincidencias
-    return Song::where('title', 'like', '%' . $this->busqueda . '%')
-        ->orderBy('title')
-        ->get();
-}
+    public function getCancionesFiltradasProperty()
+    {
+        // Si no hay búsqueda, no retorna nada
+        if (trim($this->busqueda) === '') {
+            return collect(); // Retorna una colección vacía
+        }
 
+        // Si hay búsqueda, retorna coincidencias
+        return Song::where('title', 'like', '%' . $this->busqueda . '%')
+            ->orderBy('title')
+            ->get();
+    }
 
     public function registerAndAddSong()
     {
@@ -493,11 +499,9 @@ public function getCancionesFiltradasProperty()
     protected $listeners = ['actualizarMensajes' => 'actualizarMensajes'];
 
     public function pollMensajes()
-{
-    $this->loadMessages();
-}
-
-
+    {
+        $this->loadMessages();
+    }
 
     public function render()
     {
