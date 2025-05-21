@@ -166,17 +166,17 @@
         <div class="card-header bg-primary text-white">💬 Chat en Vivo</div>
         <div class="card-body">
           <div id="mensajes" class="mb-3" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 4px;">
-           @foreach($messages as $msg)
-  <div>
-    <strong>{{ $msg['user'] }}</strong> 
-    <small class="text-muted">
-      ({{ \Carbon\Carbon::parse($msg['timestamp'])->format('h:i A') }})
-    </small>: 
-    {{ $msg['message'] }}
-  </div>
-@endforeach
-
+              @foreach($messages as $msg)
+                  <div>
+                      <strong>{{ $msg['user'] }}</strong> 
+                      <small class="text-muted">
+                          ({{ \Carbon\Carbon::createFromTimestamp($msg['timestamp'], 'UTC')->setTimezone(config('app.timezone'))->format('h:i A') }})
+                      </small>: 
+                      {{ $msg['message'] }}
+                  </div>
+              @endforeach
           </div>
+
 
           <div class="d-flex">
             <input type="text" wire:model="newMessage" wire:keydown.enter="sendMessage" class="form-control me-2" placeholder="Escribe tu mensaje...">

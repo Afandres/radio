@@ -10,112 +10,104 @@ use Illuminate\Support\Facades\Auth;
 class RequestController extends Controller
 {
     public function index(Database $database)
-{
-    $userId = Auth::id();
+    {
+        $userId = Auth::id();
 
-    // Obtener todas las peticiones
-    $peticiones = $database->getReference('peticiones')->getValue();
+        // Obtener todas las peticiones
+        $peticiones = $database->getReference('peticiones')->getValue();
 
-    // Filtrar las peticiones por el ID del usuario autenticado
-    $peticionesUsuario = [];
+        // Filtrar las peticiones por el ID del usuario autenticado
+        $peticionesUsuario = [];
 
-    if ($peticiones) {
-        foreach ($peticiones as $key => $peticion) {
-            if (isset($peticion['user_id']) && $peticion['user_id'] == $userId) {
-                $peticion['id'] = $key; // opcional, por si necesitas el ID del nodo
-                $peticionesUsuario[] = $peticion;
+        if ($peticiones) {
+            foreach ($peticiones as $key => $peticion) {
+                if (isset($peticion['user_id']) && $peticion['user_id'] == $userId) {
+                    $peticion['id'] = $key; // opcional, por si necesitas el ID del nodo
+                    $peticionesUsuario[] = $peticion;
+                }
             }
         }
-    }
 
-    return view('request', [
-        'peticiones' => $peticionesUsuario
-    ]);
-}
+        return view('request', [
+            'peticiones' => $peticionesUsuario
+        ]);
+    }
 
     public function showToday(Database $database)
-{
-    $hoy = now()->format('Y-m-d');
+    {
+        $hoy = now()->format('Y-m-d');
 
-    $ref = $database->getReference('peticiones');
-    $snapshot = $ref->getSnapshot();
-    $peticiones = $snapshot->getValue();
+        $ref = $database->getReference('peticiones');
+        $snapshot = $ref->getSnapshot();
+        $peticiones = $snapshot->getValue();
 
-    $peticionesHoy = [];
+        $peticionesHoy = [];
 
-    if ($peticiones) {
-        foreach ($peticiones as $id => $peticion) {
-            if (isset($peticion['fecha']) && $peticion['fecha'] === $hoy) {
-                $peticionesHoy[$id] = $peticion;
+        if ($peticiones) {
+            foreach ($peticiones as $id => $peticion) {
+                if (isset($peticion['fecha']) && $peticion['fecha'] === $hoy) {
+                    $peticionesHoy[$id] = $peticion;
+                }
             }
         }
+
+        return view('request.index', ['peticiones' => $peticionesHoy]);
     }
 
-    return view('request.index', ['peticiones' => $peticionesHoy]);
-}
+    public function store(Request $request, Database $database)
+    {
+        $data = $request->validate([
+            'title' => 'required',
+            'name' => 'required',
+            'artist' => 'required',
+        ]);
 
+        $colombiaTime = Carbon::now()->setTimezone('America/Bogota');
 
-    
+        $data['fecha'] = $colombiaTime->format('Y-m-d');
+        $data['hora'] = $colombiaTime->format('H:i:s');
+        $data['user_id'] = Auth::id();
 
-public function store(Request $request, Database $database)
-{
-    $data = $request->validate([
-        'title' => 'required',
-        'name' => 'required',
-        'artist' => 'required',
-    ]);
+        $database->getReference('peticiones')->push($data);
 
-    $data['fecha'] = Carbon::now()->format('Y-m-d');
-    $data['hora'] = Carbon::now()->format('H:i:s');
-    $data['user_id'] = Auth::id(); // Aquí agregas el ID del usuario autenticado
-
-    $newRequest = $database
-        ->getReference('peticiones')
-        ->push($data);
-
-    return response()->json(['success' => true]);
-}
-
-public function loadMessages(Database $database)
-{
-    $startOfDay = now()->startOfDay()->timestamp;
-    $endOfDay = now()->endOfDay()->timestamp;
-
-    $snapshot = $database->getReference('mensajes')
-        ->orderByChild('timestamp')
-        ->startAt($startOfDay)
-        ->endAt($endOfDay)
-        ->getValue();
-
-    $messages = collect($snapshot ?? [])->sortBy('timestamp')->values()->all();
-
-    return response()->json($messages); // <--- Retornar JSON
-}
-
-
-public function sendMessage(Request $request, Database $database)
-{
-    \Log::info('Mensaje recibido:', $request->all());
-
-    $message = trim($request->input('text'));
-    $user = trim($request->input('user', 'Anonimo')); // Recoge el user enviado desde Flutter
-
-    if ($message === '') {
-        return response()->json(['error' => 'Mensaje vacío'], 400);
+        return response()->json(['success' => true]);
     }
 
-    $data = [
-        'user' => $user,
-        'message' => $message,
-        'timestamp' => now()->timestamp,
-    ];
+    public function loadMessages(Database $database)
+    {
+        $startOfDay = now()->startOfDay()->timestamp;
+        $endOfDay = now()->endOfDay()->timestamp;
 
-    $database->getReference('mensajes')->push($data);
+        $snapshot = $database->getReference('mensajes')
+            ->orderByChild('timestamp')
+            ->startAt($startOfDay)
+            ->endAt($endOfDay)
+            ->getValue();
 
-    return response()->json(['success' => true]);
-}
+        $messages = collect($snapshot ?? [])->sortBy('timestamp')->values()->all();
 
+        return response()->json($messages); // <--- Retornar JSON
+    }
 
+    public function sendMessage(Request $request, Database $database)
+    {
+        \Log::info('Mensaje recibido:', $request->all());
 
+        $message = trim($request->input('text'));
+        $user = trim($request->input('user', 'Anonimo')); // Recoge el user enviado desde Flutter
 
+        if ($message === '') {
+            return response()->json(['error' => 'Mensaje vacío'], 400);
+        }
+
+        $data = [
+            'user' => $user,
+            'message' => $message,
+            'timestamp' => now()->timestamp,
+        ];
+
+        $database->getReference('mensajes')->push($data);
+
+        return response()->json(['success' => true]);
+    }
 }
