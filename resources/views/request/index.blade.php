@@ -18,7 +18,9 @@
                         <small class="text-muted">por {{ $peticion['artist'] }}</small>
                     </h5>
                     <p class="mb-1">Solicitado por: <strong>{{ $peticion['name'] }}</strong></p>
-                    <small class="text-muted">🕒 Hora: {{ $peticion['hora'] }}</small>
+                    <small class="text-muted">
+                        🕒 Hora: {{ \Carbon\Carbon::createFromFormat('H:i:s', $peticion['hora'])->format('h:i A') }}
+                    </small>
                 </div>
             @endforeach
         </div>
