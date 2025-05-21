@@ -9,6 +9,8 @@ use Livewire\WithFileUploads;
 use App\Models\Playlist;
 use App\Models\Programming;
 use getID3;
+use Kreait\Firebase\Contract\Database;
+use Illuminate\Support\Facades\Auth;
 
 class ProgramacionManager extends Component
 {
@@ -28,11 +30,14 @@ class ProgramacionManager extends Component
     public $archivoCancion;
     public $playlists;
     public $title, $artist, $playlist_id, $file, $position;
+    public $messages = [];
+    public $newMessage = '';
+    protected $database;
 
-    
 
     public function mount()
     {
+        $this->database = app(Database::class);
         $this->programacion = Programming::with('song')
         ->orderBy('position')
         ->get()
@@ -49,6 +54,7 @@ class ProgramacionManager extends Component
 
         $this->playlists = Playlist::latest()->get();
         $this->checkRadioStatus();
+        $this->loadMessages();
     }
 
     public function moveUp($index)
@@ -440,11 +446,63 @@ public function getCancionesFiltradasProperty()
         session()->flash('success', 'Lista de programación limpiada.');
     }
 
+    // Carga mensajes del día actual, ordenados por timestamp
+    public function loadMessages()
+    {
+        $database = app(Database::class);
+        $startOfDay = now()->startOfDay()->timestamp;
+        $endOfDay = now()->endOfDay()->timestamp;
+
+        $snapshot = $database->getReference('mensajes')
+            ->orderByChild('timestamp')
+            ->startAt($startOfDay)
+            ->endAt($endOfDay)
+            ->getValue();
+
+        $this->messages = collect($snapshot ?? [])
+            ->sortBy('timestamp')
+            ->values()
+            ->all();
+    }
+
+    public function sendMessage()
+    {
+        $database = app(Database::class);
+        $msg = trim($this->newMessage);
+        if ($msg === '') {
+            return;
+        }
+
+        $user = Auth::user()->name ?? 'Anonimo';
+
+        $data = [
+            'user' => $user,
+            'message' => $msg,
+            'timestamp' => now()->timestamp,
+        ];
+
+        // Usar la instancia que viene como parámetro
+        $database->getReference('mensajes')->push($data);
+
+        $this->newMessage = '';
+
+        // Refrescar mensajes
+        $this->loadMessages();
+    }
+
+    protected $listeners = ['actualizarMensajes' => 'actualizarMensajes'];
+
+    public function pollMensajes()
+{
+    $this->loadMessages();
+}
+
 
 
     public function render()
     {
         $playlists = Playlist::all();
+        $this->cancionesFiltradas = Song::latest()->take(40)->get();
         return view('livewire.programacion-manager', compact('playlists'));
     }
 }

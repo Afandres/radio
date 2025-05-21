@@ -73,7 +73,49 @@ public function store(Request $request, Database $database)
         ->getReference('peticiones')
         ->push($data);
 
-    return redirect()->route('request.create');
+    return response()->json(['success' => true]);
 }
+
+public function loadMessages(Database $database)
+{
+    $startOfDay = now()->startOfDay()->timestamp;
+    $endOfDay = now()->endOfDay()->timestamp;
+
+    $snapshot = $database->getReference('mensajes')
+        ->orderByChild('timestamp')
+        ->startAt($startOfDay)
+        ->endAt($endOfDay)
+        ->getValue();
+
+    $messages = collect($snapshot ?? [])->sortBy('timestamp')->values()->all();
+
+    return response()->json($messages); // <--- Retornar JSON
+}
+
+
+public function sendMessage(Request $request, Database $database)
+{
+    \Log::info('Mensaje recibido:', $request->all());
+
+    $message = trim($request->input('text'));
+    $user = trim($request->input('user', 'Anonimo')); // Recoge el user enviado desde Flutter
+
+    if ($message === '') {
+        return response()->json(['error' => 'Mensaje vacío'], 400);
+    }
+
+    $data = [
+        'user' => $user,
+        'message' => $message,
+        'timestamp' => now()->timestamp,
+    ];
+
+    $database->getReference('mensajes')->push($data);
+
+    return response()->json(['success' => true]);
+}
+
+
+
 
 }

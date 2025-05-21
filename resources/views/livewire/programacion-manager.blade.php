@@ -44,7 +44,7 @@
   <div class="row mt-4">
     {{-- Columna izquierda: Añadir y buscar --}}
     <div class="col-md-4">
-      <div class="mt-4 p-3 bg-light rounded shadow-sm">
+      <div class="mt-4 p-3 bg-light rounded shadow-sm" style="max-height: 400px; overflow-y: auto;">
         <h5 class="mb-3 text-primary">🎵 Buscar canción</h5>
     
         <input 
@@ -162,6 +162,28 @@
           @endforeach
         </tbody>
       </table>
+      <div wire:poll.5s="pollMensajes" class="card mt-4">
+        <div class="card-header bg-primary text-white">💬 Chat en Vivo</div>
+        <div class="card-body">
+          <div id="mensajes" class="mb-3" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+           @foreach($messages as $msg)
+  <div>
+    <strong>{{ $msg['user'] }}</strong> 
+    <small class="text-muted">
+      ({{ \Carbon\Carbon::parse($msg['timestamp'])->format('h:i A') }})
+    </small>: 
+    {{ $msg['message'] }}
+  </div>
+@endforeach
+
+          </div>
+
+          <div class="d-flex">
+            <input type="text" wire:model="newMessage" wire:keydown.enter="sendMessage" class="form-control me-2" placeholder="Escribe tu mensaje...">
+            <button wire:click="sendMessage" class="btn btn-success">Enviar</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
