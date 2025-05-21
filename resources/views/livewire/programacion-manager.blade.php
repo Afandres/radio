@@ -152,7 +152,6 @@
               <td>{{ $song['artist'] ?? 'N/A' }}</td>
               <td>
                 <div class="btn-group btn-group-sm">
-                  <button wire:click="playNow({{ $i }})" class="btn btn-outline-success" title="Reproducir ahora">▶️</button>
                   <button wire:click="moveUp({{ $i }})" class="btn btn-outline-warning" title="Subir">⬆️</button>
                   <button wire:click="moveDown({{ $i }})" class="btn btn-outline-warning" title="Bajar">⬇️</button>
                   <button wire:click="removeSong({{ $i }})" class="btn btn-outline-danger" title="Eliminar">❌</button>
